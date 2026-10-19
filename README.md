@@ -1,23 +1,25 @@
-# Wee Ghost Tracer 👻
+# Trace Studio
 
-A standalone camera-overlay tracing app for iPhone, iPad and Android, completely independent of Studio 2 and StudioSuitePro.
+A general-purpose tracing camera app for iPhone, iPad and Android. This repository is independent of Studio 2 and StudioSuitePro.
 
-## Launch the app
+## Features
 
-After GitHub Pages is enabled, open **https://stan602-bot.github.io/tracerapp/** in Safari (iPhone/iPad) or Chrome (Android). Allow camera access, select Back or Front, drag/pinch/rotate the pattern to align it over the real ornament, change its transparency and lock the overlay.
+- **Blank workspace by default** – the camera works without selecting any design.
+- **My picture** – upload an image to overlay, resize, rotate and adjust transparency.
+- **Trace lines** – create a simple line-style overlay from an uploaded drawing or photo. Or show the original image.
+- **Templates** – choose from the optional Wee Ghost back/front templates included as examples. The app is not restricted to ghosts.
+- **My saved templates** – save uploaded pictures to the browser's local IndexedDB for reuse on this device. They are not uploaded to GitHub or synced between devices. Clearing site data or private browsing may remove saved templates.
+- **Camera tools** – live camera, front/back camera, freeze view, overlay lock, photo-background mode, screenshots and downloadable patterns.
+- **Home Screen install** – GitHub Pages serves a Progressive Web App (PWA), with a separate generic icon and offline assets.
 
-To add to the iPhone/iPad Home Screen, open in Safari → Share → **Add to Home Screen**. On Android, use Chrome's menu → **Install app** / **Add to Home Screen**.
+## GitHub Pages setup
 
-## Publishing with GitHub Pages
+GitHub repository owner: `stan602-bot`. Public URL (once GitHub Pages has been enabled): **https://stan602-bot.github.io/tracerapp/**
 
-In this repository choose **Settings → Pages → Build and deployment → Deploy from a branch → main → /(root) → Save**. On GitHub Free the repository needs to be **Public**; change it under **Settings → General → Danger Zone → Change repository visibility** first. Changes can take several minutes to appear. This page is available over HTTPS, required for browser camera access.
+For GitHub Free, change repository visibility to **Public** in **Settings → General → Danger Zone**. In **Settings → Pages**, configure **Deploy from a branch**, choose **main** and **/(root)**, then Save. Wait for the Pages deployment to finish.
 
-## What it does
+On iPhone/iPad open the published HTTPS URL in Safari, grant camera access, then tap **Share → Add to Home Screen**. On Android open the URL in Chrome and select **Install app** or **Add to Home Screen**.
 
-- Original, individually spaced front/back ghost artwork is bundled in `index.html` and also provided as separate transparent PNGs.
-- Live camera, front/back camera switch, freeze, and optional uploaded-photo mode.
-- Drag/pinch/rotate, outline/filled mode, transparency and colour controls, lock/reset.
-- Save an overlaid snapshot and download the original pattern.
-- Runs in Safari or Chrome as a static progressive web app; no paid developer account or server-side processing needed.
+## Privacy and practical limitations
 
-**Limitations:** This is a manual camera overlay, not automatic 3D tracked AR. Keep the phone and ornament still while tracing. Camera permission is requested locally by your browser; the app has no remote camera upload. GitHub Pages is static hosting and cannot itself operate the phone camera; the browser supplies it via HTTPS.
+The camera stream stays on the phone; it is processed inside the browser. Saved custom templates are stored locally in that device's browser, not in GitHub. The default front/back demo ghost patterns are published as repository assets. This is a manually aligned 2D camera overlay, **not** tracked 3D augmented reality. Keep the phone stationary while painting or tracing; the device screen does not physically project artwork onto an object.

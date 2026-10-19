@@ -1,7 +1,7 @@
 {
-  "name": "Wee Ghost AR Tracer",
-  "short_name": "Wee Ghost",
-  "description": "Trace the original wee ghost designs onto your ornament with your phone camera.",
+  "name": "Trace Studio – Camera Drawing & Tracing",
+  "short_name": "Trace Studio",
+  "description": "A general-purpose camera tracing app with your own pictures and optional reusable templates.",
   "start_url": "./",
   "id": "./",
   "scope": "./",
