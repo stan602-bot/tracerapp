@@ -6,7 +6,8 @@ A general-purpose tracing camera app for iPhone, iPad and Android. This reposito
 
 - **Blank workspace by default** – the camera works without selecting any design.
 - **My picture** – upload an image to overlay, resize, rotate and adjust transparency.
-- **Trace lines** – create a simple line-style overlay from an uploaded drawing or photo. Or show the original image.
+- **Improved trace lines** – high-resolution Sobel edge detection (up to 2,200px on the longest side), adjustable fine-detail sensitivity and tracing-line thickness. Transparent drawing outlines are preserved.
+- **Fit entire picture** – preserve the full image aspect ratio with room for camera controls. Re-centre and reset any zoom/rotation when needed; zoom range now 10–400%. Switch between the full original photo and tracing lines.
 - **Templates** – choose from the optional Wee Ghost back/front templates included as examples. The app is not restricted to ghosts.
 - **My saved templates** – save uploaded pictures to the browser's local IndexedDB for reuse on this device. They are not uploaded to GitHub or synced between devices. Clearing site data or private browsing may remove saved templates.
 - **Camera tools** – live camera, front/back camera, freeze view, overlay lock, photo-background mode, screenshots and downloadable patterns.
