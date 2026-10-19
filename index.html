@@ -218,36 +218,127 @@
   };
   function setUploadedBackdrop(file){if(!file)return;if(s.photoURL)URL.revokeObjectURL(s.photoURL);s.photoURL=URL.createObjectURL(file);stopCamera();el.reference.src=s.photoURL;el.reference.style.display='block';$('centerHint').style.display='none';el.status.textContent='● Uploaded photograph';toast('Background photo ready. Add any template or your own art.');}
   $('photoBtn').onclick=()=>$('photoInput').click();$('photoInput').onchange=e=>setUploadedBackdrop(e.target.files[0]);
-  function createTraceLines(img){
-    const limit=1300,ratio=Math.min(1,limit/Math.max(img.naturalWidth,img.naturalHeight));
+  async function createTraceLines(img,detail=70,weight=1){
+    // Sobel edge detection at higher resolution than the original 1300px outline preview.
+    // Use pixel-level alpha for transparent artwork so thin lines and transparent PNGs survive.
+    const limit=2200,ratio=Math.min(1,limit/Math.max(img.naturalWidth,img.naturalHeight));
     const w=Math.max(1,Math.round(img.naturalWidth*ratio)),h=Math.max(1,Math.round(img.naturalHeight*ratio));
     const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-    const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,w,h);
-    const pixels=ctx.getImageData(0,0,w,h),data=pixels.data,gray=new Uint8Array(w*h);let transparent=false;
-    for(let i=0;i<gray.length;i++){const o=i*4;gray[i]=Math.round(data[o]*.299+data[o+1]*.587+data[o+2]*.114);if(data[o+3]<220)transparent=true;}
-    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-      const p=y*w+x,o=p*4;
-      let a=0;if(transparent){a=data[o+3];}else{
-        const l=gray[y*w+Math.max(0,x-1)],r=gray[y*w+Math.min(w-1,x+1)],u=gray[Math.max(0,y-1)*w+x],d=gray[Math.min(h-1,y+1)*w+x];
-        a=clamp((Math.abs(l-r)+Math.abs(u-d)-24)*3.8,0,255);
-      }
-      data[o]=255;data[o+1]=255;data[o+2]=255;data[o+3]=a;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    if(!ctx)throw Error('Canvas unavailable');
+    ctx.drawImage(img,0,0,w,h);
+    const frame=ctx.getImageData(0,0,w,h),data=frame.data,n=w*h;
+    const gray=new Uint8Array(n),alpha=new Uint8Array(n);
+    let transparentPixels=0;
+    for(let p=0;p<n;p++){
+      const i=p*4,a=data[i+3];alpha[p]=a;
+      if(a<242)transparentPixels++;
+      gray[p]=Math.round(data[i]*.299+data[i+1]*.587+data[i+2]*.114);
     }
-    ctx.putImageData(pixels,0,0);return canvas.toDataURL('image/png');
+    let outAlpha;
+    if(transparentPixels>n*.008){
+      // A transparent illustration is already a good tracing stencil: keep its alpha exactly.
+      outAlpha=alpha;
+    }else{
+      // Gentle, separable blur limits jpeg noise without discarding faint contours.
+      const horizontal=new Uint8Array(n),smoothed=new Uint8Array(n);
+      for(let y=0;y<h;y++){
+        const row=y*w;
+        for(let x=0;x<w;x++){
+          const p=row+x;
+          horizontal[p]=(gray[row+Math.max(0,x-1)]+2*gray[p]+gray[row+Math.min(w-1,x+1)]+2)>>2;
+        }
+      }
+      for(let y=0;y<h;y++){
+        const prev=Math.max(0,y-1)*w,curr=y*w,next=Math.min(h-1,y+1)*w;
+        for(let x=0;x<w;x++)smoothed[curr+x]=(horizontal[prev+x]+2*horizontal[curr+x]+horizontal[next+x]+2)>>2;
+      }
+      outAlpha=new Uint8Array(n);
+      const base=detail>=92?gray:smoothed;
+      // Fine-detail slider lowers the gradient threshold, revealing lower-contrast edges.
+      const threshold=14+(100-detail)*1.1;
+      const gain=3.4+detail*.035;
+      for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+        const p=y*w+x,a=base[p-w-1],b=base[p-w],c=base[p-w+1],d=base[p-1],f=base[p+1],g=base[p+w-1],i=base[p+w],j=base[p+w+1];
+        const gx=(c+2*f+j)-(a+2*d+g),gy=(g+2*i+j)-(a+2*b+c);
+        const magnitude=Math.hypot(gx,gy);
+        outAlpha[p]=Math.round(clamp((magnitude-threshold)*gain,0,255));
+      }
+    }
+    // Adjustable line thickness; two linear passes instead of a costly square kernel.
+    const radius=weight-1;
+    if(radius>0){
+      const wide=new Uint8Array(n),thick=new Uint8Array(n);
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+        const row=y*w;let mx=0;
+        for(let dx=-radius;dx<=radius;dx++)if(x+dx>=0&&x+dx<w)mx=Math.max(mx,outAlpha[row+x+dx]);
+        wide[row+x]=mx;
+      }
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+        let mx=0;for(let dy=-radius;dy<=radius;dy++)if(y+dy>=0&&y+dy<h)mx=Math.max(mx,wide[(y+dy)*w+x]);
+        thick[y*w+x]=mx;
+      }
+      outAlpha=thick;
+    }
+    for(let p=0;p<n;p++){
+      const i=p*4;data[i]=255;data[i+1]=255;data[i+2]=255;data[i+3]=outAlpha[p];
+    }
+    ctx.putImageData(frame,0,0);
+    return await new Promise((resolve,reject)=>canvas.toBlob(blob=>{
+      if(blob)resolve(URL.createObjectURL(blob));else reject(Error('Could not create outline'));
+    },'image/png'));
   }
+  let detailTimer=null;
+  async function rebuildCustomLines(){
+    if(!s.customImage)return;
+    const job=++s.customJob,img=s.customImage;
+    $('processingNote').textContent='Finding fine lines…';
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+    try{
+      const url=await createTraceLines(img,s.detail,s.weight);
+      if(job!==s.customJob){URL.revokeObjectURL(url);return;}
+      const previous=s.customLineURL;s.customLineURL=url;
+      render();
+      if(previous&&previous.startsWith('blob:'))URL.revokeObjectURL(previous);
+      $('processingNote').textContent='Detail updated · Fit entire picture keeps the whole image visible.';
+    }catch(err){
+      if(job!==s.customJob)return;
+      console.error('Detail extraction failed',err);
+      $('processingNote').textContent='Could not extract lines from this picture. Original picture still works.';
+    }
+  }
+  function scheduleDetailRefresh(){
+    if(!s.customImage)return;
+    clearTimeout(detailTimer);
+    $('processingNote').textContent='Updating detail…';
+    detailTimer=setTimeout(rebuildCustomLines,260);
+  }
+  $('detailRange').addEventListener('input',event=>{
+    s.detail=Number(event.target.value);$('detailVal').textContent=s.detail+'%';scheduleDetailRefresh();
+  });
+  $('weightRange').addEventListener('input',event=>{
+    s.weight=Number(event.target.value);$('weightVal').textContent=String(s.weight);scheduleDetailRefresh();
+  });
   function loadCustomFile(file,name,saveId=null){
-    if(!file||!file.type.startsWith('image/')){toast('Please choose a picture file.');return;}
-    if(file.size>25*1024*1024){toast('Picture too large; please choose one under 25 MB.');return;}
+    if(!file||!(file.type.startsWith('image/')||/\.(heic|heif|avif)$/i.test(file.name))){toast('Please choose a picture file.');return;}
+    if(file.size>40*1024*1024){toast('Picture too large. Choose a photo under 40 MB.');return;}
     const url=URL.createObjectURL(file),img=new Image();
     img.onload=()=>{
+      clearTimeout(detailTimer);
+      ++s.customJob; // discard a previous photo's pending line extraction
       if(s.customURL)URL.revokeObjectURL(s.customURL);
-      s.customURL=url;s.customLineURL=null;s.customFile=file;s.customDimensions=[img.naturalWidth,img.naturalHeight];
-      s.customName=name||file.name.replace(/\.[^.]+$/,'');s.customSaveId=saveId;s.side='custom';s.style='solid';s.show=true;s.locked=false;
+      if(s.customLineURL&&s.customLineURL.startsWith('blob:'))URL.revokeObjectURL(s.customLineURL);
+      s.customURL=url;s.customLineURL=null;s.customImage=img;s.customFile=file;
+      s.customDimensions=[img.naturalWidth,img.naturalHeight];
+      s.customName=name||file.name.replace(/\.[^.]+$/,'');s.customSaveId=saveId;
+      s.side='custom';s.style='solid';s.show=true;s.locked=false;
       s.transforms.custom=defaultTransform();
-      try{s.customLineURL=createTraceLines(img);}catch(err){console.warn('Line extraction unavailable',err);}
-      render();renderSaved();toast('Picture ready. Choose Original picture or Trace lines.');
+      render();renderSaved();
+      toast('Full picture fitted. Fine tracing lines are being prepared.');
+      rebuildCustomLines();
     };
-    img.onerror=()=>{URL.revokeObjectURL(url);toast('Could not read this picture');};img.src=url;
+    img.onerror=()=>{URL.revokeObjectURL(url);toast('Unable to open this format. Try exporting as JPEG or PNG.');};
+    img.src=url;
   }
   $('patternInput').onchange=e=>{const file=e.target.files[0];if(file)loadCustomFile(file);e.target.value='';};
   function download(blob,name){const a=document.createElement('a');const url=URL.createObjectURL(blob);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),8000);}
