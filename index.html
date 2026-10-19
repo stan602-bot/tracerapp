@@ -8,6 +8,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Wee Ghost Trace">
   <meta name="description" content="Trace the exact wee ghost patterns on your ornament using your phone camera.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
   
   
   
@@ -180,7 +182,7 @@
   window.addEventListener('resize',()=>render());window.addEventListener('pagehide',stopCamera);
   el.reference.src=srcs[s.side].reference;
   render();
-  
+  if('serviceWorker' in navigator && location.protocol==='https:'){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
 })();
 </script>
 </body>
